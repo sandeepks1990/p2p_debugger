@@ -36,13 +36,18 @@ let iceStats = {
 const urlParams = new URLSearchParams(window.location.search);
 const roomIdParam = urlParams.get('room');
 
-if (roomIdParam) {
-    roomId = roomIdParam;
+// Also check for path-based URL like /room/12345
+const pathMatch = window.location.pathname.match(/\/room\/(\d+)/);
+const pathRoomId = pathMatch ? pathMatch[1] : null;
+
+if (roomIdParam || pathRoomId) {
+    roomId = roomIdParam || pathRoomId;
     createRoomBtn.classList.add('hidden');
     joinRoomBtn.classList.remove('hidden');
     document.getElementById('turnUrl').value = '';
     document.getElementById('turnUsername').value = '';
     document.getElementById('turnPassword').value = '';
+    log(`Detected room ID from URL: ${roomId}`, 'info');
 }
 
 // Logging function
