@@ -9,7 +9,7 @@ const shareUrl = document.getElementById('shareUrl');
 const connectionStatus = document.getElementById('connectionStatus');
 const debugSection = document.getElementById('debugSection');
 const debugLog = document.getElementById('debugLog');
-const iceStats = document.getElementById('iceStats');
+const iceStatsSection = document.getElementById('iceStats');
 const videoSection = document.getElementById('videoSection');
 const shareScreenBtn = document.getElementById('shareScreenBtn');
 const localVideo = document.getElementById('localVideo');
@@ -190,7 +190,7 @@ socket.on('host-disconnected', () => {
 function showDebugSections() {
     connectionStatus.classList.remove('hidden');
     debugSection.classList.remove('hidden');
-    iceStats.classList.remove('hidden');
+    iceStatsSection.classList.remove('hidden');
     videoSection.classList.remove('hidden');
     shareScreenBtn.classList.remove('hidden');
 }
