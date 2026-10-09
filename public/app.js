@@ -92,15 +92,28 @@ createRoomBtn.addEventListener('click', () => {
         }
     }
 
+    // Auto-add timestamp to username if not already in REST format
+    let formattedUsername = turnUsername;
+    if (!turnUsername.includes(':')) {
+        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+        formattedUsername = `${timestamp}:${turnUsername}`;
+    }
+
+    let formattedUsername2 = turnUsername2;
+    if (turnUsername2 && !turnUsername2.includes(':')) {
+        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+        formattedUsername2 = `${timestamp}:${turnUsername2}`;
+    }
+
     myTurnConfig = {
         urls: formattedUrl,
-        username: turnUsername,
+        username: formattedUsername,
         credential: turnPassword
     };
 
     const turnConfig2 = {
         urls: formattedUrl,
-        username: turnUsername2,
+        username: formattedUsername2,
         credential: turnPassword2
     };
 
@@ -127,9 +140,16 @@ joinRoomBtn.addEventListener('click', () => {
         }
     }
 
+    // Auto-add timestamp to username if not already in REST format
+    let formattedUsername = turnUsername;
+    if (!turnUsername.includes(':')) {
+        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+        formattedUsername = `${timestamp}:${turnUsername}`;
+    }
+
     myTurnConfig = {
         urls: formattedUrl,
-        username: turnUsername,
+        username: formattedUsername,
         credential: turnPassword
     };
 
