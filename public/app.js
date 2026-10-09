@@ -47,7 +47,15 @@ if (roomIdParam || pathRoomId) {
     document.getElementById('turnUrl').value = '';
     document.getElementById('turnUsername').value = '';
     document.getElementById('turnPassword').value = '';
+    // Change button text to make it clear
+    joinRoomBtn.textContent = 'Join Room';
+    // Show debug sections immediately so user can see logs
+    connectionStatus.classList.remove('hidden');
+    debugSection.classList.remove('hidden');
+    iceStatsSection.classList.remove('hidden');
+    videoSection.classList.remove('hidden');
     log(`Detected room ID from URL: ${roomId}`, 'info');
+    log('Please enter your TURN credentials and click "Join Room"', 'info');
 }
 
 // Logging function
