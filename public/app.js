@@ -40,6 +40,12 @@ const roomIdParam = urlParams.get('room');
 const pathMatch = window.location.pathname.match(/\/room\/(\d+)/);
 const pathRoomId = pathMatch ? pathMatch[1] : null;
 
+// Debug: log what we're seeing
+console.log('URL pathname:', window.location.pathname);
+console.log('URL search:', window.location.search);
+console.log('Room ID from query:', roomIdParam);
+console.log('Room ID from path:', pathRoomId);
+
 if (roomIdParam || pathRoomId) {
     roomId = roomIdParam || pathRoomId;
     createRoomBtn.classList.add('hidden');
@@ -54,8 +60,11 @@ if (roomIdParam || pathRoomId) {
     debugSection.classList.remove('hidden');
     iceStatsSection.classList.remove('hidden');
     videoSection.classList.remove('hidden');
+    shareScreenBtn.classList.add('hidden'); // Hide screen share until connected
     log(`Detected room ID from URL: ${roomId}`, 'info');
     log('Please enter your TURN credentials and click "Join Room"', 'info');
+} else {
+    console.log('No room ID detected, showing create room button');
 }
 
 // Logging function
