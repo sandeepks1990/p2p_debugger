@@ -237,32 +237,34 @@
 
         <!-- Configuration Section -->
         <div class="config-section" id="configSection">
-            <h2>TURN Server Configuration</h2>
-            
-            <div class="form-group">
-                <label>TURN Server URL:</label>
-                <input type="text" id="turnUrl" placeholder="your-turn-server.com:443" value="">
-                <small style="color: #666; font-size: 11px;">Format: host:port (protocol added automatically)</small>
-            </div>
+            <h2 id="configTitle">TURN Server Configuration</h2>
 
-            <div class="form-group">
-                <label>TURN Username (Peer 1):</label>
-                <input type="text" id="turnUsername" placeholder="username" value="">
-            </div>
-            
-            <div class="form-group">
-                <label>TURN Password (Peer 1):</label>
-                <input type="password" id="turnPassword" placeholder="password1">
-            </div>
+            <div id="turnConfigFields">
+                <div class="form-group">
+                    <label>TURN Server URL:</label>
+                    <input type="text" id="turnUrl" placeholder="your-turn-server.com:443" value="">
+                    <small style="color: #666; font-size: 11px;">Format: host:port (protocol added automatically)</small>
+                </div>
 
-            <div class="form-group">
-                <label>TURN Username (Peer 2):</label>
-                <input type="text" id="turnUsername2" placeholder="username" value="">
-            </div>
-            
-            <div class="form-group">
-                <label>TURN Password (Peer 2):</label>
-                <input type="password" id="turnPassword2" placeholder="password2">
+                <div class="form-group">
+                    <label>TURN Username (Peer 1):</label>
+                    <input type="text" id="turnUsername" placeholder="username" value="">
+                </div>
+
+                <div class="form-group">
+                    <label>TURN Password (Peer 1):</label>
+                    <input type="password" id="turnPassword" placeholder="password1">
+                </div>
+
+                <div class="form-group">
+                    <label>TURN Username (Peer 2):</label>
+                    <input type="text" id="turnUsername2" placeholder="username" value="">
+                </div>
+
+                <div class="form-group">
+                    <label>TURN Password (Peer 2):</label>
+                    <input type="password" id="turnPassword2" placeholder="password2">
+                </div>
             </div>
 
             <button id="createRoomBtn">Create Room & Generate URL</button>

@@ -50,8 +50,9 @@ if (roomIdParam || pathRoomId) {
     roomId = roomIdParam || pathRoomId;
     createRoomBtn.classList.add('hidden');
     joinRoomBtn.classList.remove('hidden');
-    // Hide the config section for Peer 2 - they don't need to enter credentials
-    configSection.classList.add('hidden');
+    // Hide only the TURN config fields for Peer 2 - they don't need to enter credentials
+    document.getElementById('turnConfigFields').classList.add('hidden');
+    document.getElementById('configTitle').textContent = 'Join Room';
     // Change button text to make it clear
     joinRoomBtn.textContent = 'Join Room';
     // Show debug sections immediately so user can see logs
