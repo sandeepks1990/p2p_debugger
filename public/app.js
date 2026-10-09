@@ -78,14 +78,23 @@ createRoomBtn.addEventListener('click', () => {
         return;
     }
 
+    // Auto-format TURN URL if missing protocol
+    let formattedUrl = turnUrl;
+    if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
+        formattedUrl = `turn:${turnUrl}`;
+        if (!turnUrl.includes(':')) {
+            formattedUrl += ':3478';
+        }
+    }
+
     myTurnConfig = {
-        urls: turnUrl,
+        urls: formattedUrl,
         username: turnUsername,
         credential: turnPassword
     };
 
     const turnConfig2 = {
-        urls: turnUrl,
+        urls: formattedUrl,
         username: turnUsername2,
         credential: turnPassword2
     };
@@ -104,8 +113,17 @@ joinRoomBtn.addEventListener('click', () => {
         return;
     }
 
+    // Auto-format TURN URL if missing protocol
+    let formattedUrl = turnUrl;
+    if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
+        formattedUrl = `turn:${turnUrl}`;
+        if (!turnUrl.includes(':')) {
+            formattedUrl += ':3478';
+        }
+    }
+
     myTurnConfig = {
-        urls: turnUrl,
+        urls: formattedUrl,
         username: turnUsername,
         credential: turnPassword
     };
@@ -359,6 +377,12 @@ async function createOffer() {
 
 // Screen sharing
 shareScreenBtn.addEventListener('click', async () => {
+    if (!peerConnection) {
+        log('Error: Peer connection not established. Wait for peer to join first.', 'error');
+        alert('Please wait for the peer to join before starting screen share');
+        return;
+    }
+
     try {
         log('Requesting screen share...', 'info');
         localStream = await navigator.mediaDevices.getDisplayMedia({
@@ -367,19 +391,19 @@ shareScreenBtn.addEventListener('click', async () => {
             },
             audio: false
         });
-        
+
         localVideo.srcObject = localStream;
         log('Screen share started', 'success');
-        
+
         // Add tracks to peer connection
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
             log(`Added ${track.kind} track to peer connection`, 'info');
         });
-        
+
         shareScreenBtn.disabled = true;
         shareScreenBtn.textContent = 'Screen Sharing Active';
-        
+
     } catch (e) {
         log(`Error starting screen share: ${e.message}`, 'error');
     }
