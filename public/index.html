@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Debugger - WebRTC ICE Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .config-section {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .config-section h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00ff00;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00ffff;
+        }
+
+        button {
+            background: #00ff00;
+            color: #0a0a0a;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #00ffff;
+        }
+
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+
+        .url-display {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin-top: 15px;
+            word-break: break-all;
+        }
+
+        .url-display strong {
+            color: #00ffff;
+        }
+
+        .debug-section {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .debug-section h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .debug-log {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #333;
+        }
+
+        .log-entry.info {
+            border-left-color: #00ff00;
+        }
+
+        .log-entry.success {
+            border-left-color: #00ffff;
+            color: #00ffff;
+        }
+
+        .log-entry.error {
+            border-left-color: #ff0000;
+            color: #ff0000;
+        }
+
+        .log-entry.warning {
+            border-left-color: #ffff00;
+            color: #ffff00;
+        }
+
+        .log-entry.candidate {
+            border-left-color: #ff00ff;
+            color: #ff00ff;
+        }
+
+        .connection-status {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            margin-bottom: 10px;
+        }
+
+        .status-label {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .video-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-box {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            padding: 10px;
+        }
+
+        .video-box h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        video {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #333;
+        }
+
+        .ice-stats {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .ice-stats h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .stat-label {
+            color: #00ffff;
+        }
+
+        .stat-value {
+            color: #00ff00;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>P2P DEBUGGER - WebRTC ICE Analysis Tool</h1>
+
+        <!-- Configuration Section -->
+        <div class="config-section" id="configSection">
+            <h2>TURN Server Configuration</h2>
+            
+            <div class="form-group">
+                <label>TURN Server URL:</label>
+                <input type="text" id="turnUrl" placeholder="turn:your-turn-server.com:3478" value="">
+            </div>
+            
+            <div class="form-group">
+                <label>TURN Username (Peer 1):</label>
+                <input type="text" id="turnUsername" placeholder="username1">
+            </div>
+            
+            <div class="form-group">
+                <label>TURN Password (Peer 1):</label>
+                <input type="password" id="turnPassword" placeholder="password1">
+            </div>
+
+            <div class="form-group">
+                <label>TURN Username (Peer 2):</label>
+                <input type="text" id="turnUsername2" placeholder="username2">
+            </div>
+            
+            <div class="form-group">
+                <label>TURN Password (Peer 2):</label>
+                <input type="password" id="turnPassword2" placeholder="password2">
+            </div>
+
+            <button id="createRoomBtn">Create Room & Generate URL</button>
+            <button id="joinRoomBtn" class="hidden">Join Room</button>
+
+            <div class="url-display hidden" id="urlDisplay">
+                <strong>Share this URL with Peer 2:</strong><br>
+                <span id="shareUrl"></span>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status hidden" id="connectionStatus">
+            <h2>Connection Status</h2>
+            <div class="status-item">
+                <span class="status-label">State:</span>
+                <span id="connectionState">New</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">ICE Connection State:</span>
+                <span id="iceConnectionState">New</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">ICE Gathering State:</span>
+                <span id="iceGatheringState">New</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Signaling State:</span>
+                <span id="signalingState">New</span>
+            </div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="debug-section hidden" id="debugSection">
+            <h2>ICE Candidate Debug Log</h2>
+            <div class="debug-log" id="debugLog"></div>
+        </div>
+
+        <!-- ICE Statistics -->
+        <div class="ice-stats hidden" id="iceStats">
+            <h3>ICE Candidate Statistics</h3>
+            <div class="stat-row">
+                <span class="stat-label">Total Candidates:</span>
+                <span class="stat-value" id="totalCandidates">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Host Candidates:</span>
+                <span class="stat-value" id="hostCandidates">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Server Reflexive Candidates:</span>
+                <span class="stat-value" id="srflxCandidates">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Relay Candidates:</span>
+                <span class="stat-value" id="relayCandidates">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Failed Candidates:</span>
+                <span class="stat-value" id="failedCandidates">0</span>
+            </div>
+        </div>
+
+        <!-- Video Section -->
+        <div class="video-container hidden" id="videoSection">
+            <div class="video-box">
+                <h3>Local Screen</h3>
+                <video id="localVideo" autoplay playsinline></video>
+            </div>
+            <div class="video-box">
+                <h3>Remote Screen</h3>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button id="shareScreenBtn" class="hidden">Start Screen Share</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
