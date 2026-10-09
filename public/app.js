@@ -229,7 +229,7 @@ function showDebugSections() {
 // Initialize Peer Connection
 function initializePeerConnection() {
     log('Initializing peer connection...', 'info');
-    
+
     const config = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -247,7 +247,8 @@ function initializePeerConnection() {
         log(`Added TURN server: ${myTurnConfig.urls}`, 'info');
     }
 
-    if (peerTurnConfig && peerTurnConfig.urls) {
+    // Don't add peer TURN server if it's the same as ours
+    if (peerTurnConfig && peerTurnConfig.urls && peerTurnConfig.urls !== myTurnConfig.urls) {
         config.iceServers.push({
             urls: peerTurnConfig.urls,
             username: peerTurnConfig.username,
@@ -256,15 +257,17 @@ function initializePeerConnection() {
         log(`Added peer TURN server: ${peerTurnConfig.urls}`, 'info');
     }
 
+    log(`ICE config: ${JSON.stringify(config.iceServers)}`, 'info');
     peerConnection = new RTCPeerConnection(config);
 
     // ICE candidate handling
     peerConnection.onicecandidate = (event) => {
+        log(`ICE candidate event: candidate=${event.candidate ? 'yes' : 'no (null)'}`, 'info');
         if (event.candidate) {
             iceStats.total++;
             analyzeIceCandidate(event.candidate);
             updateIceStats();
-            
+
             log(`Generated ICE candidate: ${event.candidate.candidate}`, 'candidate');
             socket.emit('ice-candidate', { roomId, candidate: event.candidate });
         } else {
@@ -295,6 +298,10 @@ function initializePeerConnection() {
         const state = peerConnection.iceGatheringState;
         document.getElementById('iceGatheringState').textContent = state;
         log(`ICE gathering state changed: ${state}`, 'info');
+        if (state === 'complete' && iceStats.total === 0) {
+            log('WARNING: ICE gathering completed but no candidates were generated!', 'error');
+            log('This usually means TURN server credentials are invalid or server is unreachable', 'error');
+        }
     };
 
     peerConnection.onconnectionstatechange = () => {
@@ -377,7 +384,7 @@ function analyzeConnectionFailure() {
 // Create offer
 async function createOffer() {
     log('Creating offer...', 'info');
-    
+
     try {
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
