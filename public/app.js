@@ -50,9 +50,8 @@ if (roomIdParam || pathRoomId) {
     roomId = roomIdParam || pathRoomId;
     createRoomBtn.classList.add('hidden');
     joinRoomBtn.classList.remove('hidden');
-    document.getElementById('turnUrl').value = '';
-    document.getElementById('turnUsername').value = '';
-    document.getElementById('turnPassword').value = '';
+    // Hide the config section for Peer 2 - they don't need to enter credentials
+    configSection.classList.add('hidden');
     // Change button text to make it clear
     joinRoomBtn.textContent = 'Join Room';
     // Show debug sections immediately so user can see logs
@@ -62,7 +61,7 @@ if (roomIdParam || pathRoomId) {
     videoSection.classList.remove('hidden');
     shareScreenBtn.classList.add('hidden'); // Hide screen share until connected
     log(`Detected room ID from URL: ${roomId}`, 'info');
-    log('Please enter your TURN credentials and click "Join Room"', 'info');
+    log('Click "Join Room" to connect (credentials pre-configured by Peer 1)', 'info');
 } else {
     console.log('No room ID detected, showing create room button');
 }
@@ -139,38 +138,9 @@ createRoomBtn.addEventListener('click', () => {
 
 // Join room
 joinRoomBtn.addEventListener('click', () => {
-    const turnUrl = document.getElementById('turnUrl').value;
-    const turnUsername = document.getElementById('turnUsername').value;
-    const turnPassword = document.getElementById('turnPassword').value;
-
-    if (!turnUrl || !turnUsername || !turnPassword) {
-        alert('Please fill in TURN server configuration');
-        return;
-    }
-
-    // Auto-format TURN URL if missing protocol
-    let formattedUrl = turnUrl;
-    if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
-        formattedUrl = `turn:${turnUrl}`;
-        if (!turnUrl.includes(':')) {
-            formattedUrl += ':3478';
-        }
-    }
-
-    // Auto-add timestamp to username if not already in REST format
-    let formattedUsername = turnUsername;
-    if (!turnUsername.includes(':')) {
-        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-        formattedUsername = `${timestamp}:${turnUsername}`;
-    }
-
-    myTurnConfig = {
-        urls: formattedUrl,
-        username: formattedUsername,
-        credential: turnPassword
-    };
-
-    socket.emit('join-room', { roomId, turnConfig: myTurnConfig });
+    // Peer 2 doesn't need to enter credentials - they're pre-configured by Peer 1
+    // Send empty config and let server provide the pre-configured one
+    socket.emit('join-room', { roomId, turnConfig: {} });
 });
 
 // Socket events
@@ -193,13 +163,13 @@ socket.on('room-created', (data) => {
 
 socket.on('room-joined', (data) => {
     isHost = false;
+    // Use the TURN config provided by the server (from Peer 1)
+    myTurnConfig = data.turnConfig;
     peerTurnConfig = data.turnConfig;
-    
+
     log(`Joined room: ${roomId}`, 'success');
-    log(`Your TURN config: ${JSON.stringify(myTurnConfig)}`, 'info');
-    log(`Peer 1 TURN config: ${JSON.stringify(peerTurnConfig)}`, 'info');
-    
-    showDebugSections();
+    log(`Using TURN config from Peer 1: ${JSON.stringify(myTurnConfig)}`, 'info');
+
     initializePeerConnection();
 });
 

@@ -66,11 +66,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-    room.peer2Config = turnConfig;
+    // If Peer 2 didn't provide credentials, use the pre-configured ones from Peer 1
+    room.peer2Config = Object.keys(turnConfig).length > 0 ? turnConfig : room.turnConfig;
     socket.join(roomId);
 
     // Notify both peers
-    io.to(room.host).emit('peer-joined', { turnConfig });
+    io.to(room.host).emit('peer-joined', { turnConfig: room.peer2Config });
     socket.emit('room-joined', { turnConfig: room.turnConfig });
 
     console.log(`Peer ${socket.id} joined room ${roomId}`);
