@@ -93,6 +93,8 @@ class WMSClient {
     const ip = this.generateRandomIp();
     const serial = this.generateRandomSerial();
 
+    console.log('Registering device with:', { mac, ip, serial });
+
     const devicePayload = {
       wmsConfig: 'WMS20',
       agentCryptoVersion: 3,
@@ -166,9 +168,14 @@ class WMSClient {
       groupToken: this.groupToken
     };
 
+    console.log('Group payload:', JSON.stringify(groupPayload));
+
     const registerResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/open/deviceGroupLogin`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify(groupPayload)
     });
 
@@ -182,6 +189,9 @@ class WMSClient {
     const personId = registerData.id;
 
     // Step 2: Register device
+    console.log('Device payload:', JSON.stringify(devicePayload));
+    console.log('Person ID:', personId);
+
     const deviceResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/open/deviceRegister`, {
       method: 'POST',
       headers: {
