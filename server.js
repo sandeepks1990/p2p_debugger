@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const { spawn } = require('child_process');
 const WMSClient = require('./wms-client');
 
 const app = express();
@@ -57,30 +58,100 @@ app.post('/api/wms-config', (req, res) => {
   res.json(DEFAULT_WMS_CONFIG);
 });
 
-// Fetch TURN credentials from WMS
+// Fetch TURN credentials from WMS using Python script
 app.get('/api/turn-credentials', async (req, res) => {
   try {
-    console.log('Fetching TURN credentials from WMS...');
+    console.log('Fetching TURN credentials from WMS using Python script...');
     console.log('WMS URL:', DEFAULT_WMS_CONFIG.wmsUrl);
     console.log('Group Token:', DEFAULT_WMS_CONFIG.groupToken);
 
-    const wmsClient = new WMSClient(DEFAULT_WMS_CONFIG.wmsUrl, DEFAULT_WMS_CONFIG.groupToken);
-    const credentials = await wmsClient.getTurnCredentials();
+    // Run Python script as subprocess
+    const pythonScript = path.join(__dirname, 'wms_p2p_diag_og.py');
+    const args = [
+      '--wms-url', DEFAULT_WMS_CONFIG.wmsUrl,
+      '--group-token', DEFAULT_WMS_CONFIG.groupToken,
+      '--json'  // Get JSON output
+    ];
 
-    console.log('TURN credentials fetched successfully:', credentials);
+    console.log('Running:', 'python', pythonScript, args.join(' '));
 
-    // Format for WebRTC
-    const turnConfig = {
-      urls: `turns:${credentials.turnServerURL}`,
-      username: credentials.userID,
-      credential: credentials.phrase
-    };
+    const pythonProcess = spawn('python', [pythonScript, ...args]);
 
-    res.json({
-      success: true,
-      config: turnConfig,
-      raw: credentials
+    let stdout = '';
+    let stderr = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
     });
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      console.log('Python script exited with code:', code);
+      console.log('Python stdout:', stdout);
+      console.log('Python stderr:', stderr);
+
+      if (code !== 0) {
+        res.status(500).json({
+          success: false,
+          error: 'Python script failed',
+          details: stderr
+        });
+        return;
+      }
+
+      try {
+        const output = JSON.parse(stdout);
+        const turnUrl = output.results.find(r => r.name.includes('turnURL'));
+        const stunUrl = output.results.find(r => r.name.includes('stunURL'));
+
+        if (!turnUrl) {
+          throw new Error('TURN URL not found in Python output');
+        }
+
+        // Extract TURN server URL from detail
+        const turnServerMatch = turnUrl.detail.match(/turnURL=([^,]+)/);
+        const turnServerUrl = turnServerMatch ? turnServerMatch[1] : null;
+
+        // Extract username and password from Python script output
+        // The Python script prints these to stdout before JSON
+        const usernameMatch = stdout.match(/TURN username=([^\s]+)/);
+        const passwordMatch = stdout.match(/TURN password=([^\s]+)/);
+
+        const turnConfig = {
+          urls: `turns:${turnServerUrl}`,
+          username: usernameMatch ? usernameMatch[1] : '',
+          credential: passwordMatch ? passwordMatch[1] : ''
+        };
+
+        console.log('TURN credentials fetched successfully:', turnConfig);
+
+        res.json({
+          success: true,
+          config: turnConfig,
+          raw: output
+        });
+      } catch (e) {
+        console.error('Error parsing Python output:', e);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to parse Python output',
+          details: e.message
+        });
+      }
+    });
+
+    pythonProcess.on('error', (error) => {
+      console.error('Failed to start Python process:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to start Python process',
+        details: error.message
+      });
+    });
+
   } catch (error) {
     console.error('Error fetching TURN credentials:', error);
     console.error('Error stack:', error.stack);
