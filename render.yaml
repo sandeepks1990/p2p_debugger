@@ -3,9 +3,11 @@ services:
     name: p2p-debugger
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: |
+      sudo apt-get update && sudo apt-get install -y python3 python3-pip
+      pip3 install requests pycryptodome
+      npm install
     startCommand: node server.js
     envVars:
       - key: PORT
         value: 10000
-    runtime: docker
