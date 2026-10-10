@@ -14,6 +14,14 @@ const videoSection = document.getElementById('videoSection');
 const shareScreenBtn = document.getElementById('shareScreenBtn');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+const wmsUrlInput = document.getElementById('wmsUrl');
+const groupTokenInput = document.getElementById('groupToken');
+const fetchCredentialsBtn = document.getElementById('fetchCredentialsBtn');
+const updateConfigBtn = document.getElementById('updateConfigBtn');
+const turnStatus = document.getElementById('turnStatus');
+const turnServerInput = document.getElementById('turnServer');
+const turnUsernameInput = document.getElementById('turnUsername');
+const turnPasswordInput = document.getElementById('turnPassword');
 
 // State
 let roomId = null;
@@ -32,6 +40,14 @@ let iceStats = {
     failed: 0
 };
 
+// Signaling Statistics
+let signalingStats = {
+    offers: 0,
+    answers: 0,
+    iceCandidatesSent: 0,
+    iceCandidatesReceived: 0
+};
+
 // Check if we're joining a room
 const urlParams = new URLSearchParams(window.location.search);
 const roomIdParam = urlParams.get('room');
@@ -46,12 +62,71 @@ console.log('URL search:', window.location.search);
 console.log('Room ID from query:', roomIdParam);
 console.log('Room ID from path:', pathRoomId);
 
+// Load WMS configuration
+async function loadWmsConfig() {
+    try {
+        const response = await fetch('/api/wms-config');
+        const config = await response.json();
+        wmsUrlInput.value = config.wmsUrl;
+        groupTokenInput.value = config.groupToken;
+        log('Loaded WMS configuration', 'info');
+    } catch (e) {
+        log('Failed to load WMS configuration', 'error');
+    }
+}
+
+// Fetch TURN credentials from WMS
+async function fetchTurnCredentials() {
+    try {
+        log('Fetching TURN credentials from WMS...', 'info');
+        const response = await fetch('/api/turn-credentials');
+        const data = await response.json();
+
+        if (data.success) {
+            myTurnConfig = data.config;
+            turnServerInput.value = data.config.urls;
+            turnUsernameInput.value = data.config.username;
+            turnPasswordInput.value = data.config.credential;
+            turnStatus.classList.remove('hidden');
+            createRoomBtn.classList.remove('hidden');
+            log('TURN credentials fetched successfully', 'success');
+            log(`TURN Server: ${data.config.urls}`, 'info');
+            log(`Username: ${data.config.username}`, 'info');
+        } else {
+            log(`Failed to fetch TURN credentials: ${data.error}`, 'error');
+        }
+    } catch (e) {
+        log(`Error fetching TURN credentials: ${e.message}`, 'error');
+    }
+}
+
+// Update WMS configuration
+async function updateWmsConfig() {
+    try {
+        const response = await fetch('/api/wms-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                wmsUrl: wmsUrlInput.value,
+                groupToken: groupTokenInput.value
+            })
+        });
+        const config = await response.json();
+        log('WMS configuration updated', 'success');
+    } catch (e) {
+        log(`Failed to update WMS configuration: ${e.message}`, 'error');
+    }
+}
+
+// Initialize page
+loadWmsConfig();
+
 if (roomIdParam || pathRoomId) {
     roomId = roomIdParam || pathRoomId;
     createRoomBtn.classList.add('hidden');
     joinRoomBtn.classList.remove('hidden');
-    // Hide only the TURN config fields for Peer 2 - they don't need to enter credentials
-    document.getElementById('turnConfigFields').classList.add('hidden');
+    // Hide WMS config for Peer 2
+    document.getElementById('wmsConfigFields').classList.add('hidden');
     document.getElementById('configTitle').textContent = 'Join Room';
     // Change button text to make it clear
     joinRoomBtn.textContent = 'Join Room';
@@ -59,12 +134,17 @@ if (roomIdParam || pathRoomId) {
     connectionStatus.classList.remove('hidden');
     debugSection.classList.remove('hidden');
     iceStatsSection.classList.remove('hidden');
+    document.getElementById('signalingStats').classList.remove('hidden');
     videoSection.classList.remove('hidden');
     shareScreenBtn.classList.add('hidden'); // Hide screen share until connected
     log(`Detected room ID from URL: ${roomId}`, 'info');
     log('Click "Join Room" to connect (credentials pre-configured by Peer 1)', 'info');
+    // Auto-fetch credentials for Peer 2
+    fetchTurnCredentials();
 } else {
     console.log('No room ID detected, showing create room button');
+    // Auto-fetch credentials for Peer 1
+    fetchTurnCredentials();
 }
 
 // Logging function
@@ -87,54 +167,26 @@ function updateIceStats() {
     document.getElementById('failedCandidates').textContent = iceStats.failed;
 }
 
+// Update signaling statistics display
+function updateSignalingStats() {
+    document.getElementById('offerCount').textContent = signalingStats.offers;
+    document.getElementById('answerCount').textContent = signalingStats.answers;
+    document.getElementById('iceSentCount').textContent = signalingStats.iceCandidatesSent;
+    document.getElementById('iceReceivedCount').textContent = signalingStats.iceCandidatesReceived;
+}
+
+// Event listeners
+fetchCredentialsBtn.addEventListener('click', fetchTurnCredentials);
+updateConfigBtn.addEventListener('click', updateWmsConfig);
+
 // Create room
 createRoomBtn.addEventListener('click', () => {
-    const turnUrl = document.getElementById('turnUrl').value;
-    const turnUsername = document.getElementById('turnUsername').value;
-    const turnPassword = document.getElementById('turnPassword').value;
-    const turnUsername2 = document.getElementById('turnUsername2').value;
-    const turnPassword2 = document.getElementById('turnPassword2').value;
-
-    if (!turnUrl || !turnUsername || !turnPassword) {
-        alert('Please fill in TURN server configuration for Peer 1');
+    if (!myTurnConfig) {
+        alert('Please fetch TURN credentials first');
         return;
     }
 
-    // Auto-format TURN URL if missing protocol
-    let formattedUrl = turnUrl;
-    if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
-        formattedUrl = `turn:${turnUrl}`;
-        if (!turnUrl.includes(':')) {
-            formattedUrl += ':3478';
-        }
-    }
-
-    // Auto-add timestamp to username if not already in REST format
-    let formattedUsername = turnUsername;
-    if (!turnUsername.includes(':')) {
-        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-        formattedUsername = `${timestamp}:${turnUsername}`;
-    }
-
-    let formattedUsername2 = turnUsername2;
-    if (turnUsername2 && !turnUsername2.includes(':')) {
-        const timestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-        formattedUsername2 = `${timestamp}:${turnUsername2}`;
-    }
-
-    myTurnConfig = {
-        urls: formattedUrl,
-        username: formattedUsername,
-        credential: turnPassword
-    };
-
-    const turnConfig2 = {
-        urls: formattedUrl,
-        username: formattedUsername2,
-        credential: turnPassword2
-    };
-
-    socket.emit('create-room', { turnConfig: turnConfig2 });
+    socket.emit('create-room', { turnConfig: myTurnConfig });
 });
 
 // Join room
@@ -149,16 +201,15 @@ socket.on('room-created', (data) => {
     roomId = data.roomId;
     isHost = true;
     peerTurnConfig = data.turnConfig;
-    
+
     const url = `${window.location.origin}/room/${roomId}`;
     shareUrl.textContent = url;
     urlDisplay.classList.remove('hidden');
-    
+
     log(`Room created with ID: ${roomId}`, 'success');
     log(`Share this URL with Peer 2: ${url}`, 'info');
-    log(`Your TURN config: ${JSON.stringify(myTurnConfig)}`, 'info');
-    log(`Peer 2 TURN config (pre-configured): ${JSON.stringify(peerTurnConfig)}`, 'info');
-    
+    log(`TURN config: ${JSON.stringify(myTurnConfig)}`, 'info');
+
     showDebugSections();
 });
 
@@ -184,14 +235,20 @@ socket.on('peer-joined', (data) => {
 
 socket.on('signal', async (data) => {
     log(`Received ${data.type} signal`, 'info');
-    
+
     if (data.type === 'offer') {
+        signalingStats.offers++;
+        updateSignalingStats();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         socket.emit('signal', { roomId, signal: answer, type: 'answer' });
+        signalingStats.answers++;
+        updateSignalingStats();
         log('Sent answer', 'success');
     } else if (data.type === 'answer') {
+        signalingStats.answers++;
+        updateSignalingStats();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
         log('Remote description set (answer)', 'success');
     }
@@ -199,6 +256,8 @@ socket.on('signal', async (data) => {
 
 socket.on('ice-candidate', async (data) => {
     if (data.candidate) {
+        signalingStats.iceCandidatesReceived++;
+        updateSignalingStats();
         log(`Received ICE candidate from peer`, 'candidate');
         try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -222,6 +281,7 @@ function showDebugSections() {
     connectionStatus.classList.remove('hidden');
     debugSection.classList.remove('hidden');
     iceStatsSection.classList.remove('hidden');
+    document.getElementById('signalingStats').classList.remove('hidden');
     videoSection.classList.remove('hidden');
     shareScreenBtn.classList.remove('hidden');
 }
@@ -267,6 +327,8 @@ function initializePeerConnection() {
             iceStats.total++;
             analyzeIceCandidate(event.candidate);
             updateIceStats();
+            signalingStats.iceCandidatesSent++;
+            updateSignalingStats();
 
             log(`Generated ICE candidate: ${event.candidate.candidate}`, 'candidate');
             socket.emit('ice-candidate', { roomId, candidate: event.candidate });
@@ -362,8 +424,16 @@ function analyzeIceCandidate(candidate) {
 // Analyze connection failure
 function analyzeConnectionFailure() {
     log('=== CONNECTION FAILURE ANALYSIS ===', 'error');
-    
-    if (iceStats.relay === 0) {
+
+    // Check ICE candidates
+    if (iceStats.total === 0) {
+        log('CRITICAL: No ICE candidates were generated at all', 'error');
+        log('Possible causes:', 'error');
+        log('  1. TURN server credentials are invalid or expired', 'error');
+        log('  2. TURN server is unreachable (network/firewall issue)', 'error');
+        log('  3. TURN server requires TLS but using plain TURN', 'error');
+        log('RECOMMENDATION: Verify TURN credentials and try using turns:// instead of turn://', 'warning');
+    } else if (iceStats.relay === 0) {
         log('FAILURE: No relay candidates - TURN server may not be working', 'error');
         log('RECOMMENDATION: Verify TURN server URL, username, and password', 'warning');
     } else if (iceStats.srflx === 0) {
@@ -372,12 +442,23 @@ function analyzeConnectionFailure() {
     } else if (iceStats.host === 0) {
         log('FAILURE: No host candidates - local network issue', 'error');
     }
-    
+
+    // Check signaling
+    if (signalingStats.offers === 0) {
+        log('FAILURE: No offer was sent - peer connection not initialized', 'error');
+    }
+    if (signalingStats.answers === 0) {
+        log('FAILURE: No answer was received - peer may not have joined', 'error');
+    }
+    if (signalingStats.iceCandidatesReceived === 0 && signalingStats.iceCandidatesSent > 0) {
+        log('FAILURE: ICE candidates sent but none received - peer may have disconnected', 'error');
+    }
+
     if (iceStats.failed > 0) {
         log(`FAILURE: ${iceStats.failed} candidates failed to gather`, 'error');
         log('RECOMMENDATION: Check network connectivity and firewall rules', 'warning');
     }
-    
+
     log('=== END ANALYSIS ===', 'error');
 }
 

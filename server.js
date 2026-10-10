@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const WMSClient = require('./wms-client');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,6 +14,12 @@ const io = socketIo(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Default WMS configuration
+const DEFAULT_WMS_CONFIG = {
+  wmsUrl: 'us1-sq3.wysemanagementsuite.com',
+  groupToken: 'mahhTest@123'
+};
 
 // Store room data
 const rooms = new Map();
@@ -26,6 +33,7 @@ function generateRoomId() {
   return roomId;
 }
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -34,6 +42,46 @@ app.get('/', (req, res) => {
 
 app.get('/room/:roomId', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Get WMS configuration
+app.get('/api/wms-config', (req, res) => {
+  res.json(DEFAULT_WMS_CONFIG);
+});
+
+// Update WMS configuration
+app.post('/api/wms-config', (req, res) => {
+  const { wmsUrl, groupToken } = req.body;
+  if (wmsUrl) DEFAULT_WMS_CONFIG.wmsUrl = wmsUrl;
+  if (groupToken) DEFAULT_WMS_CONFIG.groupToken = groupToken;
+  res.json(DEFAULT_WMS_CONFIG);
+});
+
+// Fetch TURN credentials from WMS
+app.get('/api/turn-credentials', async (req, res) => {
+  try {
+    const wmsClient = new WMSClient(DEFAULT_WMS_CONFIG.wmsUrl, DEFAULT_WMS_CONFIG.groupToken);
+    const credentials = await wmsClient.getTurnCredentials();
+
+    // Format for WebRTC
+    const turnConfig = {
+      urls: `turns:${credentials.turnServerURL}`,
+      username: credentials.userID,
+      credential: credentials.phrase
+    };
+
+    res.json({
+      success: true,
+      config: turnConfig,
+      raw: credentials
+    });
+  } catch (error) {
+    console.error('Error fetching TURN credentials:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 io.on('connection', (socket) => {

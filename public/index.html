@@ -237,37 +237,42 @@
 
         <!-- Configuration Section -->
         <div class="config-section" id="configSection">
-            <h2 id="configTitle">TURN Server Configuration</h2>
+            <h2 id="configTitle">WMS Configuration</h2>
 
-            <div id="turnConfigFields">
+            <div id="wmsConfigFields">
                 <div class="form-group">
-                    <label>TURN Server URL:</label>
-                    <input type="text" id="turnUrl" placeholder="your-turn-server.com:443" value="">
-                    <small style="color: #666; font-size: 11px;">Format: host:port (protocol added automatically)</small>
+                    <label>WMS Server URL:</label>
+                    <input type="text" id="wmsUrl" placeholder="us1-sq3.wysemanagementsuite.com" value="">
+                    <small style="color: #666; font-size: 11px;">WMS server for TURN credential retrieval</small>
                 </div>
 
                 <div class="form-group">
-                    <label>TURN Username (Peer 1):</label>
-                    <input type="text" id="turnUsername" placeholder="username" value="">
+                    <label>Group Token:</label>
+                    <input type="text" id="groupToken" placeholder="group-token" value="">
+                    <small style="color: #666; font-size: 11px;">WMS group registration token</small>
                 </div>
 
-                <div class="form-group">
-                    <label>TURN Password (Peer 1):</label>
-                    <input type="password" id="turnPassword" placeholder="password1">
-                </div>
+                <button id="fetchCredentialsBtn">Fetch TURN Credentials</button>
+                <button id="updateConfigBtn">Update Configuration</button>
+            </div>
 
+            <div id="turnStatus" class="hidden">
+                <h3>TURN Credentials (Auto-fetched from WMS)</h3>
                 <div class="form-group">
-                    <label>TURN Username (Peer 2):</label>
-                    <input type="text" id="turnUsername2" placeholder="username" value="">
+                    <label>TURN Server:</label>
+                    <input type="text" id="turnServer" readonly value="">
                 </div>
-
                 <div class="form-group">
-                    <label>TURN Password (Peer 2):</label>
-                    <input type="password" id="turnPassword2" placeholder="password2">
+                    <label>Username:</label>
+                    <input type="text" id="turnUsername" readonly value="">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="turnPassword" readonly value="">
                 </div>
             </div>
 
-            <button id="createRoomBtn">Create Room & Generate URL</button>
+            <button id="createRoomBtn" class="hidden">Create Room & Generate URL</button>
             <button id="joinRoomBtn" class="hidden">Join Room</button>
 
             <div class="url-display hidden" id="urlDisplay">
@@ -325,6 +330,27 @@
             <div class="stat-row">
                 <span class="stat-label">Failed Candidates:</span>
                 <span class="stat-value" id="failedCandidates">0</span>
+            </div>
+        </div>
+
+        <!-- Signaling Statistics -->
+        <div class="ice-stats hidden" id="signalingStats">
+            <h3>Signaling Statistics</h3>
+            <div class="stat-row">
+                <span class="stat-label">Offers Sent/Received:</span>
+                <span class="stat-value" id="offerCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Answers Sent/Received:</span>
+                <span class="stat-value" id="answerCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">ICE Candidates Sent:</span>
+                <span class="stat-value" id="iceSentCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">ICE Candidates Received:</span>
+                <span class="stat-value" id="iceReceivedCount">0</span>
             </div>
         </div>
 
