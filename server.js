@@ -60,8 +60,14 @@ app.post('/api/wms-config', (req, res) => {
 // Fetch TURN credentials from WMS
 app.get('/api/turn-credentials', async (req, res) => {
   try {
+    console.log('Fetching TURN credentials from WMS...');
+    console.log('WMS URL:', DEFAULT_WMS_CONFIG.wmsUrl);
+    console.log('Group Token:', DEFAULT_WMS_CONFIG.groupToken);
+
     const wmsClient = new WMSClient(DEFAULT_WMS_CONFIG.wmsUrl, DEFAULT_WMS_CONFIG.groupToken);
     const credentials = await wmsClient.getTurnCredentials();
+
+    console.log('TURN credentials fetched successfully:', credentials);
 
     // Format for WebRTC
     const turnConfig = {
@@ -77,9 +83,11 @@ app.get('/api/turn-credentials', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching TURN credentials:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: error.stack
     });
   }
 });

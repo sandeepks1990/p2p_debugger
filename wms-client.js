@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const https = require('https');
 
 /**
  * WMS Client for Node.js
@@ -12,6 +13,53 @@ class WMSClient {
     this.deviceId = null;
     this.authCode = null;
     this.encryptionKey = null;
+  }
+
+  // Custom fetch that ignores SSL errors (like Python's verify=False)
+  async fetchIgnoreSSL(url, options) {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+      const requestOptions = {
+        ...options,
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: urlObj.pathname + urlObj.search,
+        method: options.method || 'GET',
+        headers: options.headers || {},
+        rejectUnauthorized: false // Ignore SSL certificate errors
+      };
+
+      const req = https.request(requestOptions, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const jsonData = JSON.parse(data);
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode,
+              json: async () => jsonData,
+              text: async () => data
+            });
+          } catch (e) {
+            resolve({
+              ok: res.statusCode >= 200 && res.statusCode < 300,
+              status: res.statusCode,
+              json: async () => { throw e; },
+              text: async () => data
+            });
+          }
+        });
+      });
+
+      req.on('error', reject);
+
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
+    });
   }
 
   normalizeWmsUrl(url) {
@@ -54,7 +102,7 @@ class WMSClient {
       brokerServer: {
         type: 'None',
         url: 'none',
-        logonusers: [{ username: 'turndiag\\user', logintime: new Date().toISOString() }]
+        logonusers: [{ username: 'turndiag\\user', logintime: '2024-06-12T08:41:21.725Z' }]
       },
       isDiskLoggingEnabled: false,
       owner: { id: 0 },
@@ -118,7 +166,7 @@ class WMSClient {
       groupToken: this.groupToken
     };
 
-    const registerResponse = await fetch(`${this.wmsUrl}/open/deviceGroupLogin`, {
+    const registerResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/open/deviceGroupLogin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
       body: JSON.stringify(groupPayload)
@@ -132,7 +180,7 @@ class WMSClient {
     const personId = registerData.id;
 
     // Step 2: Register device
-    const deviceResponse = await fetch(`${this.wmsUrl}/open/deviceRegister`, {
+    const deviceResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/open/deviceRegister`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json;charset=UTF-8',
@@ -171,7 +219,7 @@ class WMSClient {
       'X-Stratus-device-id': this.deviceId
     };
 
-    const checkinResponse = await fetch(`${this.wmsUrl}/device/checkin`, {
+    const checkinResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/device/checkin`, {
       method: 'POST',
       headers
     });
@@ -191,7 +239,7 @@ class WMSClient {
       'X-Stratus-device-id': this.deviceId
     };
 
-    const keyResponse = await fetch(`${this.wmsUrl}/device/getKey?wyseId=${this.deviceId}`, {
+    const keyResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/device/getKey?wyseId=${this.deviceId}`, {
       method: 'GET',
       headers
     });
@@ -244,7 +292,7 @@ class WMSClient {
       'X-Stratus-device-id': this.deviceId
     };
 
-    const webrtcResponse = await fetch(`${this.wmsUrl}/device/getWebRTCDetails`, {
+    const webrtcResponse = await this.fetchIgnoreSSL(`${this.wmsUrl}/device/getWebRTCDetails`, {
       method: 'GET',
       headers
     });
