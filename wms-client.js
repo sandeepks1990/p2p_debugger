@@ -173,7 +173,9 @@ class WMSClient {
     });
 
     if (!registerResponse.ok) {
-      throw new Error(`Pre-register failed: ${registerResponse.status}`);
+      const errorText = await registerResponse.text();
+      console.error('Pre-register failed:', registerResponse.status, errorText);
+      throw new Error(`Pre-register failed: ${registerResponse.status} - ${errorText}`);
     }
 
     const registerData = await registerResponse.json();
@@ -190,7 +192,9 @@ class WMSClient {
     });
 
     if (!deviceResponse.ok) {
-      throw new Error(`Device register failed: ${deviceResponse.status}`);
+      const errorText = await deviceResponse.text();
+      console.error('Device register failed:', deviceResponse.status, errorText);
+      throw new Error(`Device register failed: ${deviceResponse.status} - ${errorText}`);
     }
 
     const deviceData = await deviceResponse.json();
